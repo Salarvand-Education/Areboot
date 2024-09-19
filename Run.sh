@@ -14,4 +14,6 @@ main() {
     done
 }
 
+echo -e "Script Is Runned Successful"
+
 main

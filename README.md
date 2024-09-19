@@ -3,5 +3,5 @@
 # Install
 
 ```
-bash <(curl -s https://raw.githubusercontent.com/Salarvand-Education/Areboot/main/Run.sh)
+bash <(curl -s https://raw.githubusercontent.com/Salarvand-Education/Areboot/main/Install.sh)
 ```

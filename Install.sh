@@ -6,6 +6,7 @@ sudo apt-get update -y
 sudo apt-get upgrade -y
 
 echo "Starting Install Crontab..."
+sleep 3
 sudo apt-get install cron -y
 
 echo "Cleaning up unnecessary files..."

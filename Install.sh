@@ -3,14 +3,17 @@
 # آپدیت و آپگرید سیستم
 echo "Starting system update and upgrade..."
 sleep 3
-sudo apt update -y
-sudo apt upgrade -y
+sudo apt-get update -y
+sudo apt-get upgrade -y
+
+echo "Starting Install Crontab..."
+sudo apt-get install cron
 
 # پاکسازی فایل‌های بی‌استفاده
 echo "Cleaning up unnecessary files..."
 sleep 3
-sudo apt autoremove -y
-sudo apt autoclean -y
+sudo apt-get autoremove -y
+sudo apt-get autoclean -y
 
 # اضافه کردن کرونجاب برای ریبوت هر 12 ساعت
 echo "Adding cron job for reboot every 6 hours..."

@@ -117,12 +117,13 @@ manage_reboot_cron_job() {
                 add_reboot_cron_job "0 */6 * * * /sbin/reboot"
                 ;;
             2)
-                read -p "$(colored_echo yellow 'Enter custom cron expression (e.g., 0 */6 * * *): ')" custom_time
-                if [ -n "$custom_time" ]; then
-                    add_reboot_cron_job "$custom_time /sbin/reboot"
-                else
-                    colored_echo yellow "Operation canceled."
-                fi
+                read -p "$(colored_echo yellow 'Enter minute (0-59): ')" MINUTE
+                read -p "$(colored_echo yellow 'Enter hour (0-23): ')" HOUR
+                read -p "$(colored_echo yellow 'Enter day of month (1-31): ')" DAY
+                read -p "$(colored_echo yellow 'Enter month (1-12): ')" MONTH
+                read -p "$(colored_echo yellow 'Enter day of week (0-7): ')" WEEKDAY
+                CRONJOB="$MINUTE $HOUR $DAY $MONTH $WEEKDAY /sbin/reboot"
+                add_reboot_cron_job "$CRONJOB"
                 ;;
             3)
                 remove_reboot_cron_job
@@ -158,9 +159,6 @@ remove_reboot_cron_job() {
 
 # Check for sudo privileges
 check_sudo
-
-# Install dialog if not installed
-install_dialog
 
 # Main loop
 display_menu

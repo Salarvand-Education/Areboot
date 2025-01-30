@@ -120,10 +120,14 @@ manage_reboot_cron_job() {
                 read -p "$(colored_echo yellow 'Enter minute (0-59): ')" MINUTE
                 read -p "$(colored_echo yellow 'Enter hour (0-23): ')" HOUR
                 read -p "$(colored_echo yellow 'Enter day of month (1-31): ')" DAY
-                read -p "$(colored_echo yellow 'Enter month (1-12): ')" MONTH
-                read -p "$(colored_echo yellow 'Enter day of week (0-7): ')" WEEKDAY
-                CRONJOB="$MINUTE $HOUR $DAY $MONTH $WEEKDAY /sbin/reboot"
-                add_reboot_cron_job "$CRONJOB"
+                CRONJOB="$MINUTE $HOUR $DAY * * /sbin/reboot"
+                colored_echo green "Cron job expression: $CRONJOB"
+                read -p "$(colored_echo yellow 'Do you want to add this cron job? (y/n): ')" CONFIRM
+                if [[ $CONFIRM == "y" || $CONFIRM == "Y" ]]; then
+                    add_reboot_cron_job "$CRONJOB"
+                else
+                    colored_echo yellow "Operation canceled."
+                fi
                 ;;
             3)
                 remove_reboot_cron_job

@@ -117,9 +117,22 @@ manage_reboot_cron_job() {
                 add_reboot_cron_job "0 */6 * * * /sbin/reboot"
                 ;;
             2)
-                read -p "$(colored_echo yellow 'Enter minute (0-59): ')" MINUTE
-                read -p "$(colored_echo yellow 'Enter hour (0-23): ')" HOUR
-                read -p "$(colored_echo yellow 'Enter day of month (1-31): ')" DAY
+                read -p "$(colored_echo yellow 'Enter minute (0-59 or 0 for every minute): ')" MINUTE
+                read -p "$(colored_echo yellow 'Enter hour (0-23 or 0 for every hour): ')" HOUR
+                read -p "$(colored_echo yellow 'Enter day of month (1-31 or 0 for every day): ')" DAY
+                # Convert 0 to appropriate value
+                [[ "$MINUTE" == "0" ]] && MINUTE="*"
+                [[ "$HOUR" == "0" ]] && HOUR="*/1"
+                [[ "$DAY" == "0" ]] && DAY="*"
+
+                # Handle special cases for minute and hour
+                if [[ "$MINUTE" =~ ^[0-9]+$ ]]; then
+                    MINUTE=$((MINUTE % 60))
+                fi
+                if [[ "$HOUR" =~ ^[0-9]+$ ]]; then
+                    HOUR=$((HOUR % 24))
+                fi
+
                 CRONJOB="$MINUTE $HOUR $DAY * * /sbin/reboot"
                 colored_echo green "Cron job expression: $CRONJOB"
                 read -p "$(colored_echo yellow 'Do you want to add this cron job? (y/n): ')" CONFIRM

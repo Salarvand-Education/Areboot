@@ -45,7 +45,6 @@ display_menu() {
         colored_echo yellow "5) Exit"
         colored_echo blue "============================================="
         read -p "$(colored_echo yellow 'Choose an option: ')" CHOICE
-
         case $CHOICE in
             1)
                 update_upgrade
@@ -75,7 +74,14 @@ display_menu() {
 update_upgrade() {
     colored_echo blue "Starting system update and upgrade..."
     sleep 3
-    apt-get update -y && apt-get upgrade -y
+    if ! apt-get update -y; then
+        colored_echo red "Failed to update package lists."
+        return
+    fi
+    if ! apt-get upgrade -y; then
+        colored_echo red "Failed to upgrade packages."
+        return
+    fi
     colored_echo green "System update and upgrade completed."
     sleep 3
 }
@@ -84,8 +90,17 @@ update_upgrade() {
 install_cron() {
     colored_echo blue "Starting Install Crontab..."
     sleep 3
-    apt-get install cron -y
-    colored_echo green "Crontab installed."
+    if dpkg -l | grep -q cron; then
+        colored_echo yellow "Cron is already installed."
+    else
+        if ! apt-get install cron -y; then
+            colored_echo red "Failed to install Cron."
+            return
+        fi
+        colored_echo green "Crontab installed."
+    fi
+    systemctl is-active --quiet cron || systemctl start cron
+    colored_echo green "Cron service started."
     sleep 3
 }
 
@@ -93,7 +108,10 @@ install_cron() {
 cleanup_files() {
     colored_echo blue "Cleaning up unnecessary files..."
     sleep 3
-    apt-get autoremove -y && apt-get autoclean -y
+    if ! apt-get autoremove -y && apt-get autoclean -y; then
+        colored_echo red "Failed to clean up unnecessary files."
+        return
+    fi
     colored_echo green "Cleanup completed."
     sleep 3
 }
@@ -111,28 +129,50 @@ manage_reboot_cron_job() {
         colored_echo yellow "4) Back"
         colored_echo blue "============================================="
         read -p "$(colored_echo yellow 'Choose an action: ')" CHOICE
-
         case $CHOICE in
             1)
                 add_reboot_cron_job "0 */6 * * * /sbin/reboot"
                 ;;
             2)
-                read -p "$(colored_echo yellow 'Enter minute (0-59 or 0 for every minute): ')" MINUTE
-                read -p "$(colored_echo yellow 'Enter hour (0-23 or 0 for every hour): ')" HOUR
-                read -p "$(colored_echo yellow 'Enter day of month (1-31 or 0 for every day): ')" DAY
-                # Convert 0 to appropriate value
-                [[ "$MINUTE" == "0" ]] && MINUTE="*"
-                [[ "$HOUR" == "0" ]] && HOUR="*/1"
-                [[ "$DAY" == "0" ]] && DAY="*"
+                # Get custom time inputs
+                while true; do
+                    read -p "$(colored_echo yellow 'How often should the system reboot? (1=Every X minutes, 2=Every Y hours, 3=Every day): ')" REBOOT_FREQUENCY
+                    case $REBOOT_FREQUENCY in
+                        1)
+                            read -p "$(colored_echo yellow 'Enter interval in minutes (e.g., 10 for every 10 minutes): ')" MINUTE_INTERVAL
+                            if [[ "$MINUTE_INTERVAL" =~ ^[0-9]+$ && "$MINUTE_INTERVAL" -ge 1 && "$MINUTE_INTERVAL" -le 59 ]]; then
+                                MINUTE="*/$MINUTE_INTERVAL"
+                                HOUR="*"
+                                DAY="*"
+                                break
+                            else
+                                colored_echo red "Invalid input. Please enter a number between 1 and 59."
+                            fi
+                            ;;
+                        2)
+                            read -p "$(colored_echo yellow 'Enter interval in hours (e.g., 3 for every 3 hours): ')" HOUR_INTERVAL
+                            if [[ "$HOUR_INTERVAL" =~ ^[0-9]+$ && "$HOUR_INTERVAL" -ge 1 && "$HOUR_INTERVAL" -le 23 ]]; then
+                                MINUTE="0"
+                                HOUR="*/$HOUR_INTERVAL"
+                                DAY="*"
+                                break
+                            else
+                                colored_echo red "Invalid input. Please enter a number between 1 and 23."
+                            fi
+                            ;;
+                        3)
+                            MINUTE="0"
+                            HOUR="0"
+                            DAY="*"
+                            break
+                            ;;
+                        *)
+                            colored_echo red "Invalid option. Please choose 1, 2, or 3."
+                            ;;
+                    esac
+                done
 
-                # Handle special cases for minute and hour
-                if [[ "$MINUTE" =~ ^[0-9]+$ ]]; then
-                    MINUTE=$((MINUTE % 60))
-                fi
-                if [[ "$HOUR" =~ ^[0-9]+$ ]]; then
-                    HOUR=$((HOUR % 24))
-                fi
-
+                # Build the cron job expression
                 CRONJOB="$MINUTE $HOUR $DAY * * /sbin/reboot"
                 colored_echo green "Cron job expression: $CRONJOB"
                 read -p "$(colored_echo yellow 'Do you want to add this cron job? (y/n): ')" CONFIRM
@@ -160,7 +200,11 @@ manage_reboot_cron_job() {
 add_reboot_cron_job() {
     CRONJOB="$1"
     (crontab -l 2>/dev/null; echo "$CRONJOB") | crontab -
-    colored_echo green "Cron job added: $CRONJOB"
+    if [ $? -eq 0 ]; then
+        colored_echo green "Cron job added: $CRONJOB"
+    else
+        colored_echo red "Failed to add cron job."
+    fi
     sleep 3
 }
 
@@ -170,7 +214,11 @@ remove_reboot_cron_job() {
     crontab -l | grep -v '/sbin/reboot' > "$TEMP_CRONTAB"
     crontab "$TEMP_CRONTAB"
     rm "$TEMP_CRONTAB"
-    colored_echo green "Reboot cron job removed."
+    if [ $? -eq 0 ]; then
+        colored_echo green "Reboot cron job removed."
+    else
+        colored_echo red "Failed to remove cron job."
+    fi
     sleep 3
 }
 

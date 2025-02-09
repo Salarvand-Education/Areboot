@@ -67,7 +67,7 @@ apt-get autoremove -y && apt-get autoclean -y
 journalctl --vacuum-time=3d 2>/dev/null
 
 # Kill idle or suspicious network connections (except SSH)
-netstat -tnp | grep ESTABLISHED | grep -v "sshd" | awk '{print \$7}' | cut -d'/' -f1 | xargs -r kill -9 2>/dev/null
+ss -tnp | grep ESTAB | grep -v "sshd" | awk '{print \$6}' | cut -d',' -f2 | cut -d'=' -f2 | xargs -r kill -9 2>/dev/null
 
 # Disable unnecessary services (excluding SSH)
 systemctl list-unit-files --type=service | grep enabled | awk '{print \$1}' | while read service; do
@@ -178,16 +178,18 @@ manage_reboot_cron_job() {
         colored_echo blue "============================================="
         colored_echo yellow "1) Add Reboot Cron Job (every 6 hours)"
         colored_echo yellow "2) Add Reboot Cron Job (custom time)"
-        colored_echo yellow "3) Remove Reboot Cron Job"
-        colored_echo yellow "4) Back"
+        colored_echo yellow "3) Add Reboot Cron Job (every X days)"
+        colored_echo yellow "4) Remove Reboot Cron Job"
+        colored_echo yellow "5) Back to Main Menu"
         colored_echo blue "============================================="
         read -p "$(colored_echo yellow 'Choose an action: ')" CHOICE
         case $CHOICE in
             1)
+                # Add reboot cron job every 6 hours
                 add_reboot_cron_job_with_optimization "0 */6 * * *"
                 ;;
             2)
-                # Get custom time inputs
+                # Add reboot cron job with custom time
                 while true; do
                     read -p "$(colored_echo yellow 'How often should the system reboot? (1=Every X minutes, 2=Every Y hours, 3=Every day): ')" REBOOT_FREQUENCY
                     case $REBOOT_FREQUENCY in
@@ -214,10 +216,15 @@ manage_reboot_cron_job() {
                             fi
                             ;;
                         3)
-                            MINUTE="0"
-                            HOUR="0"
-                            DAY="*"
-                            break
+                            read -p "$(colored_echo yellow 'Enter interval in days (e.g., 1 for every day, 2 for every 2 days): ')" DAY_INTERVAL
+                            if [[ "$DAY_INTERVAL" =~ ^[0-9]+$ && "$DAY_INTERVAL" -ge 1 ]]; then
+                                MINUTE="0"
+                                HOUR="0"
+                                DAY="*/$DAY_INTERVAL"
+                                break
+                            else
+                                colored_echo red "Invalid input. Please enter a number greater than or equal to 1."
+                            fi
                             ;;
                         *)
                             colored_echo red "Invalid option. Please choose 1, 2, or 3."
@@ -230,9 +237,24 @@ manage_reboot_cron_job() {
                 add_reboot_cron_job_with_optimization "$CRONJOB"
                 ;;
             3)
-                remove_reboot_cron_job
+                # Add reboot cron job every X days
+                read -p "$(colored_echo yellow 'Enter interval in days (e.g., 1 for every day, 2 for every 2 days): ')" DAY_INTERVAL
+                if [[ "$DAY_INTERVAL" =~ ^[0-9]+$ && "$DAY_INTERVAL" -ge 1 ]]; then
+                    MINUTE="0"
+                    HOUR="0"
+                    DAY="*/$DAY_INTERVAL"
+                    CRONJOB="$MINUTE $HOUR $DAY * *"
+                    add_reboot_cron_job_with_optimization "$CRONJOB"
+                else
+                    colored_echo red "Invalid input. Please enter a number greater than or equal to 1."
+                fi
                 ;;
             4)
+                # Remove reboot cron job
+                remove_reboot_cron_job
+                ;;
+            5)
+                # Back to main menu
                 break
                 ;;
             *)
@@ -332,11 +354,11 @@ cleanup_and_optimize() {
 
     # 5. Kill idle or suspicious network connections (except SSH)
     colored_echo yellow "Killing idle or suspicious network connections (excluding SSH)..."
-    netstat -tnp | grep ESTABLISHED | grep -v "sshd" | awk '{print $7}' | cut -d'/' -f1 | xargs -r kill -9 2>/dev/null
+    ss -tnp | grep ESTAB | grep -v "sshd" | awk '{print $6}' | cut -d',' -f2 | cut -d'=' -f2 | xargs -r kill -9 2>/dev/null
     if [ $? -eq 0 ]; then
         colored_echo green "Idle or suspicious connections terminated (SSH excluded)."
     else
-        colored_echo red "Failed to terminate connections."
+        colored_echo red "No idle or suspicious connections found, or failed to terminate connections."
     fi
 
     # 6. Disable unnecessary services (excluding SSH)

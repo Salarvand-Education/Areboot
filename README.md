@@ -1,4 +1,3 @@
-```
 # Areboot - Automatic System Reboot Manager
 
 Areboot is a simple yet powerful tool to manage automatic system reboots using cron jobs. With this tool, you can easily schedule reboots based on your desired time intervals (e.g., every X minutes, Y hours, or daily).
